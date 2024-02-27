@@ -48,11 +48,10 @@ export interface SyncStringStorage {
 
 export function withStorageValidator<Value>(
   validator: (value: unknown) => value is Value,
-): (storage: AsyncStorage<unknown>) => AsyncStorage<Value>
-
-export function withStorageValidator<Value>(
-  validator: (value: unknown) => value is Value,
-): (storage: SyncStorage<unknown>) => SyncStorage<Value>
+): {
+  (storage: AsyncStorage<any>): AsyncStorage<Value>
+  (storage: SyncStorage<any>): SyncStorage<Value>
+}
 
 export function withStorageValidator<Value>(
   validator: (value: unknown) => value is Value,
@@ -99,8 +98,18 @@ export function createJSONStorage<Value>(
   getStringStorage: () =>
     | AsyncStringStorage
     | SyncStringStorage
-    | undefined = () =>
-    typeof window !== 'undefined' ? window.localStorage : undefined,
+    | undefined = () => {
+    try {
+      return window.localStorage
+    } catch (e) {
+      if (import.meta.env?.MODE !== 'production') {
+        if (typeof window !== 'undefined') {
+          console.warn(e)
+        }
+      }
+      return undefined
+    }
+  },
   options?: JsonStorageOptions,
 ): AsyncStorage<Value> | SyncStorage<Value> {
   let lastStr: string | undefined

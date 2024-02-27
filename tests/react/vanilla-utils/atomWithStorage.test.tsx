@@ -3,7 +3,12 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { useAtom } from 'jotai/react'
 import { atom, createStore } from 'jotai/vanilla'
-import { RESET, atomWithStorage, createJSONStorage } from 'jotai/vanilla/utils'
+import {
+  RESET,
+  atomWithStorage,
+  createJSONStorage,
+  unstable_withStorageValidator as withStorageValidator,
+} from 'jotai/vanilla/utils'
 
 const resolve: (() => void)[] = []
 
@@ -502,6 +507,45 @@ describe('atomWithStorage (with browser storage)', () => {
   })
 })
 
+describe('atomWithStorage (with disabled browser storage)', () => {
+  const savedLocalStorage = window.localStorage
+
+  beforeAll(() => {
+    // Firefox and chromium based browser throw DOMException when cookies are disabled
+    Object.defineProperty(window, 'localStorage', {
+      get() {
+        throw new DOMException('The operation is insecure.')
+      },
+    })
+  })
+
+  afterAll(() => {
+    // TS < 4.5 causes type error without `as any`
+    ;(window as any).localStorage = savedLocalStorage
+  })
+
+  it('initial value of atomWithStorage can be used when cookies are disabled', async () => {
+    const countAtom = atomWithStorage<number>('counter', 4)
+
+    const Counter = () => {
+      const [value] = useAtom(countAtom)
+      return (
+        <>
+          <div>count: {value}</div>
+        </>
+      )
+    }
+
+    const { findByText } = render(
+      <StrictMode>
+        <Counter />
+      </StrictMode>,
+    )
+
+    await findByText('count: 4')
+  })
+})
+
 describe('atomWithStorage (with non-browser storage)', () => {
   const addEventListener = window.addEventListener
   const mockAddEventListener = vi.fn()
@@ -547,5 +591,13 @@ describe('atomWithStorage (with non-browser storage)', () => {
       'storage',
       expect.any(Function),
     )
+  })
+})
+
+describe('withStorageValidator', () => {
+  it('should use withStorageValidator with isNumber', () => {
+    const storage = createJSONStorage<number>()
+    const isNumber = (v: unknown): v is number => typeof v === 'number'
+    atomWithStorage('my-number', 0, withStorageValidator(isNumber)(storage))
   })
 })
