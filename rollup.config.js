@@ -33,10 +33,11 @@ function getBabelOptions(targets) {
   }
 }
 
-function getEsbuild(target, env = 'development') {
+function getEsbuild(env = 'development') {
   return esbuild({
     minify: env === 'production',
-    target,
+    target: 'es2018',
+    supported: { 'import-meta': true },
     tsconfig: path.resolve('./tsconfig.json'),
   })
 }
@@ -75,10 +76,11 @@ function createESMConfig(input, output, clientOnly) {
               'import.meta.env?.MODE':
                 '(import.meta.env ? import.meta.env.MODE : undefined)',
             }),
+        'import.meta.env?.USE_STORE2': 'false',
         delimiters: ['\\b', '\\b(?!(\\.|/))'],
         preventAssignment: true,
       }),
-      getEsbuild('node12'),
+      getEsbuild(),
       banner2(() => clientOnly && cscComment),
     ],
   }
@@ -94,6 +96,7 @@ function createCommonJSConfig(input, output, clientOnly) {
       resolve({ extensions }),
       replace({
         'import.meta.env?.MODE': 'process.env.NODE_ENV',
+        'import.meta.env?.USE_STORE2': 'false',
         delimiters: ['\\b', '\\b(?!(\\.|/))'],
         preventAssignment: true,
       }),
@@ -131,6 +134,7 @@ function createUMDConfig(input, output, env, clientOnly) {
       resolve({ extensions }),
       replace({
         'import.meta.env?.MODE': JSON.stringify(env),
+        'import.meta.env?.USE_STORE2': 'false',
         delimiters: ['\\b', '\\b(?!(\\.|/))'],
         preventAssignment: true,
       }),
@@ -154,10 +158,11 @@ function createSystemConfig(input, output, env, clientOnly) {
       resolve({ extensions }),
       replace({
         'import.meta.env?.MODE': JSON.stringify(env),
+        'import.meta.env?.USE_STORE2': 'false',
         delimiters: ['\\b', '\\b(?!(\\.|/))'],
         preventAssignment: true,
       }),
-      getEsbuild('node12', env),
+      getEsbuild(env),
       banner2(() => clientOnly && cscComment),
     ],
   }
